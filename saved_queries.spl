@@ -1,0 +1,29 @@
+# ====================================================================
+# SOC LAB: HIGH-FIDELITY SPLUNK DETECTION QUERIES
+# ====================================================================
+
+# QUERY 1: Detecting Local Windows Account Brute Force
+# Target: Windows Security Logs (Event ID 4625 = Failed Login)
+# MITRE ATT&CK: T1110 (Brute Force)
+sourcetype="WinEventLog:Security" EventCode=4625 
+| stats count by TargetUserName, IpAddress, SubStatus
+| rename count as "Failed Attempts"
+| where 'Failed Attempts' > 10
+| sort - "Failed Attempts"
+
+
+# QUERY 2: Detecting PowerShell Downloading Executables (Malicious Activity)
+# Target: Microsoft Sysmon (Event ID 1 = Process Creation)
+# MITRE ATT&CK: T1059.001 (PowerShell)
+sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode=1 
+| search Image="*powershell.exe" (CommandLine="*downloadstring*" OR CommandLine="*downloadfile*" OR CommandLine="*wget*" OR CommandLine="*curl*")
+| table _time, Computer, User, CommandLine, ParentImage
+| sort - _time
+
+
+# QUERY 3: Clearing Windows Security Event Logs (Defense Evasion)
+# Target: Windows Security Logs (Event ID 1102 = Audit Log Cleared)
+# MITRE ATT&CK: T1070.001 (Clear Windows Event Logs)
+sourcetype="WinEventLog:Security" EventCode=1102
+| table _time, Computer, User, Message
+| rename User as "Malicious Actor"
